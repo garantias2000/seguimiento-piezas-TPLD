@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Seguimiento de Piezas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800">
+  <header class="bg-white shadow-sm">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <h1 class="text-xl font-semibold">Seguimiento de Piezas</h1>
+      <p class="text-sm text-gray-500">Introduce el ID que te dimos para ver el estatus</p>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto p-4">
+    <section class="bg-white rounded-2xl shadow p-6 mb-6">
+      <form id="trackForm" class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+        <div class="sm:col-span-2">
+          <label for="trackId" class="block text-sm font-medium text-gray-700">ID de seguimiento</label>
+          <input id="trackId" name="trackId" required placeholder="Ej: RZ-2025-0001" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+        </div>
+        <div class="flex gap-2">
+          <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md shadow hover:bg-indigo-700">Buscar</button>
+          <button id="sampleBtn" type="button" class="w-full inline-flex items-center justify-center px-4 py-2 border rounded-md">Ejemplo</button>
+        </div>
+      </form>
+      <p class="mt-3 text-sm text-gray-500">Si tu sitio está en servidor, la petición va a <code>/api/track.php?id=TU_ID</code></p>
+    </section>
+
+    <section id="result" class="hidden bg-white rounded-2xl shadow p-6">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 id="partTitle" class="text-lg font-semibold">Pieza: <span id="partName">—</span></h2>
+          <p class="text-sm text-gray-500 mt-1">ID: <span id="partId">—</span></p>
+          <p class="text-sm text-gray-500">Última actualización: <span id="lastUpdate">—</span></p>
+        </div>
+        <div class="text-right">
+          <div id="statusBadge" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">—</div>
+          <div class="mt-2 text-xs text-gray-500">Responsable: <span id="owner">—</span></div>
+        </div>
+      </div>
+
+      <hr class="my-4" />
+
+      <div>
+        <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+          <div id="progressBar" class="h-3 rounded-full transition-all duration-500" style="width:0%"></div>
+        </div>
+        <div class="flex justify-between text-xs mt-2 text-gray-500">
+          <span>Recibido</span>
+          <span>Inspección</span>
+          <span>Revisión</span>
+          <span>Listo</span>
+        </div>
+      </div>
+
+      <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h3 class="font-medium mb-3">Historial</h3>
+          <div id="timeline" class="space-y-4 timeline p-2"></div>
+        </div>
+
+        <div>
+          <h3 class="font-medium mb-3">Detalles</h3>
+          <dl class="grid grid-cols-1 gap-2 text-sm text-gray-700">
+            <div>
+              <dt class="font-medium">Modelo</dt>
+              <dd id="model">—</dd>
+            </div>
+            <div>
+              <dt class="font-medium">Observaciones</dt>
+              <dd id="notes">—</dd>
+            </div>
+            <div>
+              <dt class="font-medium">Contacto</dt>
+              <dd id="contact">—</dd>
+            </div>
+          </dl>
+
+          <div class="mt-4 flex gap-2">
+            <a id="shareLink" class="text-sm underline cursor-pointer">Copiar enlace</a>
+            <button id="printBtn" class="text-sm px-3 py-1 border rounded-md">Imprimir</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="notFound" class="hidden bg-white rounded-2xl shadow p-6 text-center text-gray-600">
+      <p>No encontramos información para ese ID. Verifica que esté bien escrito o contacta soporte.</p>
+    </section>
+
+  </main>
+
+  <footer class="max-w-4xl mx-auto p-4 text-xs text-gray-500">© Tu Empresa - Sistema de seguimiento</footer>
+
+  <script>
+    const el = id => document.getElementById(id);
+
+    function render(data){
+      if (!data || !data.found) {
+        el('result').classList.add('hidden');
+        el('notFound').classList.remove('hidden');
+        return;
+      }
+      el('notFound').classList.add('hidden');
+      el('result').classList.remove('hidden');
+
+      el('partName').textContent = data.name || '—';
+      el('partId').textContent = data.id || '—';
+      el('lastUpdate').textContent = data.lastUpdate ? new Date(data.lastUpdate).toLocaleString() : '—';
+      el('owner').textContent = data.owner || '—';
+      el('model').textContent = data.model || '—';
+      el('notes').textContent = data.notes || '—';
+      el('contact').textContent = data.contact || '—';
+
+      const badge = el('statusBadge');
+      badge.textContent = data.status || '—';
+      badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium';
+      if (data.status && data.status.toLowerCase().includes('listo')) badge.classList.add('bg-green-100','text-green-800');
+      else if (data.status && data.status.toLowerCase().includes('revisión')) badge.classList.add('bg-yellow-100','text-yellow-800');
+      else badge.classList.add('bg-gray-100','text-gray-700');
+
+      const prog = Math.max(0, Math.min(100, data.progress || 0));
+      el('progressBar').style.width = prog + '%';
+      el('progressBar').className = 'h-3 rounded-full transition-all duration-500';
+      if (prog >= 80) el('progressBar').classList.add('bg-green-500'); else if (prog >= 40) el('progressBar').classList.add('bg-yellow-400'); else el('progressBar').classList.add('bg-red-400');
+
+      const timeline = el('timeline');
+      timeline.innerHTML = '';
+      (data.history || []).slice().reverse().forEach(h => {
+        const d = document.createElement('div');
+        d.className = 'step bg-gray-50 p-3 rounded-md';
+        d.innerHTML = `<div class="text-xs text-gray-500">${new Date(h.time).toLocaleString()}</div><div class="font-medium">${h.title}</div><div class="text-sm text-gray-600">${h.detail}</div>`;
+        timeline.appendChild(d);
+      });
+
+      const shareLink = `${location.origin}${location.pathname}?id=${encodeURIComponent(data.id)}`;
+      el('shareLink').onclick = async () => {
+        try { await navigator.clipboard.writeText(shareLink); el('shareLink').textContent = 'Enlace copiado'; setTimeout(()=>el('shareLink').textContent='Copiar enlace',2000); } catch(e){ alert('Copia manual: ' + shareLink) }
+      };
+      el('printBtn').onclick = () => window.print();
+    }
+
+    async function fetchStatus(id){
+      try {
+        const resp = await fetch('/api/track.php?id=' + encodeURIComponent(id), {cache:'no-store'});
+        if (!resp.ok) throw new Error('no response');
+        return await resp.json();
+      } catch(e) {
+        // fallback to local mock when not on server
+        const MOCK = {
+          'RZ-2025-0001': {
+            found: true, id: 'RZ-2025-0001', name: 'Eje de transmisión A12', status: 'En revisión', owner:'Carlos Méndez', lastUpdate:'2025-10-21T10:30:00Z', model:'A12X', notes:'Variación ligera en diámetro', contact:'servicio@tuejemplo.com', progress:60, history:[{time:'2025-10-18T09:00:00Z',title:'Recibido',detail:'Pieza registrada'},{time:'2025-10-19T11:45:00Z',title:'Inspección',detail:'Inspección inicial completada'},{time:'2025-10-21T10:30:00Z',title:'En revisión',detail:'Revisión técnica en curso'}]
+          }
+        };
+        return MOCK[id] || { found: false };
+      }
+    }
+
+    document.getElementById('trackForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const id = el('trackId').value.trim();
+      if (!id) return;
+      const data = await fetchStatus(id);
+      render(data);
+      history.replaceState({},'', '?id='+encodeURIComponent(id));
+    });
+
+    document.getElementById('sampleBtn').addEventListener('click', () => {
+      el('trackId').value = 'RZ-2025-0001';
+      document.getElementById('trackForm').dispatchEvent(new Event('submit'));
+    });
+
+    // auto-check query string
+    try {
+      const p = new URLSearchParams(location.search);
+      const qid = p.get('id');
+      if (qid) {
+        el('trackId').value = qid;
+        document.getElementById('trackForm').dispatchEvent(new Event('submit'));
+      }
+    } catch(e){}
+  </script>
+  <style>
+    .timeline { border-left: 3px solid rgba(0,0,0,0.06); }
+    .step { position: relative; padding-left: 1.25rem; }
+    .step::before { content: ''; position: absolute; left: -7px; top: 0.25rem; width: 10px; height: 10px; border-radius: 9999px; background: white; box-shadow: 0 0 0 4px rgba(0,0,0,0.05); }
+  </style>
+</body>
+</html>
