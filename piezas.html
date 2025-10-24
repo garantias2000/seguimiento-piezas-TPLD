@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Seguimiento de piezas</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --accent:#2563eb;
+      --border:#e6e9ef;
+    }
+    body{
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:var(--bg);
+      margin:0;
+      padding:24px;
+      color:#111827;
+    }
+    .container{
+      max-width:1100px;
+      margin:0 auto;
+    }
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:18px;
+    }
+    h1{ font-size:20px; margin:0; }
+    .controls{ display:flex; gap:8px; align-items:center; }
+    .search{
+      padding:8px 10px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:var(--card);
+      min-width:220px;
+    }
+    button{
+      padding:8px 12px;
+      border-radius:8px;
+      border:1px solid transparent;
+      background:var(--accent);
+      color:white;
+      cursor:pointer;
+      font-weight:600;
+    }
+    button.ghost{
+      background:transparent;
+      color:var(--accent);
+      border:1px solid var(--border);
+      font-weight:600;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px;
+      box-shadow: 0 1px 0 rgba(16,24,40,0.02);
+      overflow:auto;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:900px;
+    }
+    th, td{
+      text-align:left;
+      padding:10px 12px;
+      border-bottom:1px solid #f1f3f7;
+      vertical-align:top;
+      font-size:14px;
+    }
+    th{
+      position:relative;
+      user-select:none;
+      cursor:pointer;
+      white-space:nowrap;
+      color:#111827;
+      font-weight:700;
+    }
+    th .sort-ind {
+      font-size:11px;
+      opacity:0.6;
+      margin-left:8px;
+    }
+    tr:hover td{ background: #fbfdff; }
+    .muted{ color:var(--muted); font-size:13px; }
+    .badge{
+      display:inline-block;
+      padding:6px 8px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:600;
+      background:#eef2ff;
+      color:#1e3a8a;
+    }
+    @media (max-width:800px){
+      .container{ padding:10px; }
+      table{ min-width:700px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Seguimiento de piezas</h1>
+        <div class="muted">Vista de registros importados desde `piezas_corregido.sql`</div>
+      </div>
+      <div class="controls">
+        <input id="search" class="search" placeholder="Buscar (ID, pieza, estado, responsable...)" />
+        <button id="exportBtn">Exportar CSV</button>
+        <button id="resetBtn" class="ghost">Limpiar búsqueda</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <table id="piezasTable" aria-label="Tabla de piezas">
+        <thead>
+          <tr>
+            <th data-key="id">ID <span class="sort-ind">↕</span></th>
+            <th data-key="nombre_pieza">Nombre pieza <span class="sort-ind">↕</span></th>
+            <th data-key="estado">Estado <span class="sort-ind">↕</span></th>
+            <th data-key="responsable">Responsable <span class="sort-ind">↕</span></th>
+            <th data-key="actualizacion">Actualización <span class="sort-ind">↕</span></th>
+            <th data-key="modelo">Modelo <span class="sort-ind">↕</span></th>
+            <th data-key="observaciones">Observaciones</th>
+            <th data-key="contacto">Contacto</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr>
+            <td>RZ-2025-0001</td>
+            <td>Eje de transmisión A12</td>
+            <td><span class="badge">En revisión</span></td>
+            <td>Carlos Méndez</td>
+            <td>2025-10-21 10:30:00</td>
+            <td>A12X</td>
+            <td>Variación ligera en diámetro</td>
+            <td><a href="mailto:servicio@tuejemplo.com">servicio@tuejemplo.com</a></td>
+          </tr>
+          <tr>
+            <td>RZ-2025-0002</td>
+            <td>Tapa frontal C9</td>
+            <td><span class="badge">Listo para entrega</span></td>
+            <td>Ana Torres</td>
+            <td>2025-10-22 14:00:00</td>
+            <td>C9</td>
+            <td>Pulido terminado</td>
+            <td><a href="mailto:atencion@tuejemplo.com">atencion@tuejemplo.com</a></td>
+          </tr>
+          <tr>
+            <td>ID-2025-0003</td>
+            <td>XBOX ONE</td>
+            <td><span class="badge">Recibido</span></td>
+            <td>GRUPO PANAMA</td>
+            <td>2025-10-23 17:30:00</td>
+            <td>Consola</td>
+            <td>Se calienta la consola</td>
+            <td><a href="mailto:garantiastpld@gmail.com">garantiastpld@gmail.com</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('search');
+    const tbody = document.getElementById('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const resetBtn = document.getElementById('resetBtn');
+    const exportBtn = document.getElementById('exportBtn');
+
+    function normalize(text){ return (text || '').toString().toLowerCase(); }
+
+    searchInput.addEventListener('input', () => {
+      const q = normalize(searchInput.value.trim());
+      rows.forEach(row => {
+        const text = normalize(row.innerText);
+        row.style.display = text.includes(q) ? '' : 'none';
+      });
+    });
+
+    resetBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      rows.forEach(r => r.style.display = '');
+      searchInput.focus();
+    });
+
+    const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+    const comparer = (idx, asc) => (a, b) => {
+      const v1 = getCellValue(asc ? a : b, idx).trim();
+      const v2 = getCellValue(asc ? b : a, idx).trim();
+      const dateRegex = /^\d{4}-\d{2}-\d{2}/;
+      const num1 = parseFloat(v1.replace(/[^\d\.\-]/g, ''));
+      const num2 = parseFloat(v2.replace(/[^\d\.\-]/g, ''));
+      if (dateRegex.test(v1) && dateRegex.test(v2)) {
+        return new Date(v1) - new Date(v2);
+      } else if (!isNaN(num1) && !isNaN(num2)) {
+        return num1 - num2;
+      } else {
+        return v1.localeCompare(v2, undefined, {numeric:true, sensitivity:'base'});
+      }
+    };
+
+    document.querySelectorAll('th').forEach((th, index) => {
+      let asc = true;
+      th.addEventListener('click', () => {
+        const visibleRows = rows.filter(r => r.style.display !== 'none');
+        visibleRows.sort(comparer(index, asc));
+        const hiddenRows = rows.filter(r => r.style.display === 'none');
+        tbody.innerHTML = '';
+        visibleRows.forEach(r => tbody.appendChild(r));
+        hiddenRows.forEach(r => tbody.appendChild(r));
+        asc = !asc;
+      });
+    });
+
+    function downloadCSV(filename, rowsData) {
+      const csvContent = rowsData.map(r => r.map(cell => {
+        const s = cell == null ? '' : cell.toString();
+        return '"' + s.replace(/"/g, '""') + '"';
+      }).join(',')).join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    exportBtn.addEventListener('click', () => {
+      const headerCells = Array.from(document.querySelectorAll('thead th')).map(th => th.innerText.replace('↕','').trim());
+      const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.style.display !== 'none');
+      const dataRows = visibleRows.map(tr => Array.from(tr.children).map(td => td.innerText.trim()));
+      dataRows.unshift(headerCells);
+      downloadCSV('piezas_export.csv', dataRows);
+    });
+  </script>
+</body>
+</html>
